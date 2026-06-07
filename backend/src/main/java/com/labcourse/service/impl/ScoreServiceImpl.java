@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @Service
+@SuppressWarnings("null")
 public class ScoreServiceImpl implements ScoreService {
 
     @Autowired

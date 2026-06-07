@@ -3,15 +3,21 @@ package com.labcourse.service.impl;
 import com.labcourse.entity.Course;
 import com.labcourse.repository.CourseRepository;
 import com.labcourse.service.CourseService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
 
 @Service
+@SuppressWarnings("null")
 public class CourseServiceImpl implements CourseService {
+
+    private static final Logger logger = LoggerFactory.getLogger(CourseServiceImpl.class);
 
     @Autowired
     private CourseRepository courseRepository;
@@ -59,8 +65,22 @@ public class CourseServiceImpl implements CourseService {
     }
 
     @Override
+    @Transactional
     public boolean removeById(Long id) {
+        if (!courseRepository.existsById(id)) {
+            logger.warn("删除课程失败：课程 {} 不存在", id);
+            return false;
+        }
+
+        // 先删除关联数据，避免外键约束冲突
+        int deletedSelections = jdbcTemplate.update("DELETE FROM selection WHERE course_id = ?", id);
+        int deletedScores = jdbcTemplate.update("DELETE FROM score WHERE course_id = ?", id);
+        int deletedAttendances = jdbcTemplate.update("DELETE FROM attendance WHERE course_id = ?", id);
+        logger.info("删除课程 {} 的关联数据：选课 {} 条，成绩 {} 条，考勤 {} 条",
+                id, deletedSelections, deletedScores, deletedAttendances);
+
         courseRepository.deleteById(id);
+        logger.info("课程 {} 删除成功", id);
         return true;
     }
 }

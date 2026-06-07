@@ -15,9 +15,9 @@ export function deleteSelection(id) {
   })
 }
 
-export function getMyCourses(studentId) {
+export function getMyCourses() {
   return request({
-    url: `/selection/my/${studentId}`,
+    url: '/selection/my',
     method: 'get'
   })
 }

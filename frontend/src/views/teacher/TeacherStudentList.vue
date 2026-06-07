@@ -1,14 +1,30 @@
 <template>
   <div class="page-container">
-    <h2>学生名单</h2>
-    <el-button @click="goBack" style="margin-bottom: 20px">返回</el-button>
-    <el-table :data="studentList" stripe style="width: 100%">
-      <el-table-column prop="student_no" label="学号" width="150" />
-      <el-table-column prop="name" label="姓名" width="120" />
-      <el-table-column prop="gender" label="性别" width="80" />
-      <el-table-column prop="major" label="专业" width="200" />
-      <el-table-column prop="select_time" label="选课时间" width="180" />
-    </el-table>
+    <div class="page-header">
+      <div class="header-left">
+        <el-button text @click="goBack" class="back-btn">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          返回
+        </el-button>
+        <h2>学生名单</h2>
+      </div>
+      <span class="count">{{ studentList.length }} 名学生</span>
+    </div>
+
+    <div v-if="studentList.length === 0" class="empty-state">
+      <span class="empty-icon">🎓</span>
+      <p>暂无学生选课</p>
+    </div>
+
+    <div v-else class="table-responsive">
+      <el-table :data="studentList" stripe>
+        <el-table-column prop="student_no" label="学号" width="150" />
+        <el-table-column prop="name" label="姓名" width="120" />
+        <el-table-column prop="gender" label="性别" width="80" />
+        <el-table-column prop="major" label="专业" width="200" />
+        <el-table-column prop="select_time" label="选课时间" min-width="180" />
+      </el-table>
+    </div>
   </div>
 </template>
 
@@ -33,24 +49,25 @@ const loadStudentList = async () => {
   }
 }
 
-const goBack = () => {
-  router.back()
-}
+const goBack = () => { router.back() }
 
-onMounted(() => {
-  loadStudentList()
-})
+onMounted(() => { loadStudentList() })
 </script>
 
 <style scoped>
-.page-container {
-  padding: 20px;
-  background: white;
-  border-radius: 8px;
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
 }
 
-.page-container h2 {
-  margin: 0 0 20px 0;
-  color: #333;
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.88rem;
+  padding: 4px 8px;
 }
+
+.count { font-size: 0.82rem; color: var(--color-text-muted); }
 </style>

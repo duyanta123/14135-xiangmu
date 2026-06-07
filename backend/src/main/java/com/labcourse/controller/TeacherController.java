@@ -2,6 +2,7 @@ package com.labcourse.controller;
 
 import com.labcourse.entity.Teacher;
 import com.labcourse.service.TeacherService;
+import com.labcourse.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -10,11 +11,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/teacher")
+@RequestMapping("/api/teacher")
 public class TeacherController {
 
     @Autowired
     private TeacherService teacherService;
+
+    @Autowired
+    private JwtUtil jwtUtil;
 
     @PostMapping("/login")
     public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> loginData) {
@@ -25,9 +29,11 @@ public class TeacherController {
         Map<String, Object> result = new HashMap<>();
 
         if (teacher != null) {
+            String token = jwtUtil.generateToken(teacher.getId(), teacher.getTeacherNo(), "teacher");
             result.put("success", true);
             result.put("message", "登录成功");
             result.put("data", teacher);
+            result.put("token", token);
             return ResponseEntity.ok(result);
         } else {
             result.put("success", false);

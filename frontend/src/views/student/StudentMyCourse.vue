@@ -1,39 +1,65 @@
 <template>
   <div class="page-container">
-    <h2>我的课程</h2>
-    <el-table :data="myCourseList" stripe style="width: 100%; margin-top: 20px">
-      <el-table-column prop="course_name" label="课程名" width="150" />
-      <el-table-column prop="teacher_name" label="教师" width="100" />
-      <el-table-column prop="lab_name" label="实验室" width="150" />
-      <el-table-column prop="location" label="地点" width="120" />
-      <el-table-column prop="course_time" label="上课时间" width="120" />
-      <el-table-column prop="select_time" label="选课时间" width="180" />
-      <el-table-column label="操作" width="100">
-        <template #default="scope">
-          <el-button type="danger" size="small" @click="handleDropCourse(scope.row)">
-            退课
-          </el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+    <div class="page-header">
+      <h2>我的课程</h2>
+      <span class="course-count">共 {{ myCourseList.length }} 门课程</span>
+    </div>
+
+    <div v-if="myCourseList.length === 0" class="empty-state">
+      <span class="empty-icon">📚</span>
+      <p>尚未选课，去课程列表看看吧</p>
+    </div>
+
+    <div v-else class="course-grid">
+      <div v-for="course in myCourseList" :key="course.selection_id" class="course-card">
+        <div class="card-top">
+          <div class="course-id">{{ course.course_name }}</div>
+          <el-button type="danger" size="small" plain @click="handleDropCourse(course)">退课</el-button>
+        </div>
+        <div class="card-body">
+          <div class="info-row">
+            <span class="info-label">教师</span>
+            <span class="info-value">{{ course.teacher_name }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">实验室</span>
+            <span class="info-value">{{ course.lab_name }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">地点</span>
+            <span class="info-value">{{ course.location }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">时间</span>
+            <span class="info-value">{{ course.course_time }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">选课时间</span>
+            <span class="info-value">{{ course.select_time }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getMyCourses } from '../../api/selection'
-import { deleteSelection } from '../../api/selection'
+import { getMyCourses, deleteSelection } from '../../api/selection'
+import { clearScheduleCache } from '../../utils/scheduleCache'
+import { notifyScheduleUpdate } from '../../utils/scheduleEventBus'
 
 const myCourseList = ref([])
 
-const user = computed(() => {
-  return JSON.parse(localStorage.getItem('user') || '{}')
-})
+const bustScheduleCache = () => {
+  clearScheduleCache()
+  notifyScheduleUpdate()
+}
 
 const loadMyCourses = async () => {
   try {
-    const result = await getMyCourses(user.value.id)
+    const result = await getMyCourses()
     if (result.success) {
       myCourseList.value = result.data
     }
@@ -49,10 +75,10 @@ const handleDropCourse = async (course) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-
     const result = await deleteSelection(course.selection_id)
     if (result.success) {
       ElMessage.success('退课成功')
+      bustScheduleCache()
       loadMyCourses()
     } else {
       ElMessage.error(result.message)
@@ -64,20 +90,72 @@ const handleDropCourse = async (course) => {
   }
 }
 
-onMounted(() => {
-  loadMyCourses()
-})
+onMounted(() => { loadMyCourses() })
 </script>
 
 <style scoped>
-.page-container {
-  padding: 20px;
-  background: white;
-  border-radius: 8px;
+.course-count {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
 }
 
-.page-container h2 {
-  margin: 0 0 20px 0;
-  color: #333;
+.course-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-md);
+}
+
+@media (max-width: 640px) {
+  .course-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.course-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.course-card:hover {
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+}
+
+.course-id {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.card-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.info-row {
+  display: flex;
+  padding: 4px 0;
+  font-size: 0.85rem;
+}
+
+.info-label {
+  width: 64px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.info-value {
+  color: var(--color-text-soft);
 }
 </style>

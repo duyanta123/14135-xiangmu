@@ -1,42 +1,42 @@
 <template>
   <div class="page-container">
-    <h2>成绩录入</h2>
-    <el-form :inline="true" style="margin-bottom: 20px">
-      <el-form-item label="选择课程">
-        <el-select v-model="selectedCourse" placeholder="请选择课程" @change="loadStudents">
-          <el-option
-            v-for="course in courseList"
-            :key="course.id"
-            :label="course.course_name"
-            :value="course.id"
-          />
-        </el-select>
-      </el-form-item>
-    </el-form>
+    <div class="page-header">
+      <h2>成绩录入</h2>
+    </div>
 
-    <el-table :data="studentList" stripe style="width: 100%">
-      <el-table-column prop="student_no" label="学号" width="150" />
-      <el-table-column prop="name" label="姓名" width="120" />
-      <el-table-column prop="major" label="专业" width="200" />
-      <el-table-column label="成绩" width="150">
-        <template #default="scope">
-          <el-input-number
-            v-model="scope.row.score"
-            :min="0"
-            :max="100"
-            :precision="2"
-            size="small"
-          />
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" width="100">
-        <template #default="scope">
-          <el-button type="primary" size="small" @click="handleSaveScore(scope.row)">
-            保存
-          </el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+    <div class="filter-bar">
+      <el-select v-model="selectedCourse" placeholder="选择课程" size="large" @change="loadStudents" clearable>
+        <el-option v-for="course in courseList" :key="course.id" :label="course.course_name" :value="course.id" />
+      </el-select>
+    </div>
+
+    <div v-if="!selectedCourse" class="empty-state">
+      <span class="empty-icon">📝</span>
+      <p>请先选择要录入成绩的课程</p>
+    </div>
+
+    <template v-else>
+      <div v-if="studentList.length === 0" class="empty-state">
+        <span class="empty-icon">🎓</span>
+        <p>该课程暂无学生</p>
+      </div>
+
+      <el-table v-else :data="studentList" stripe>
+        <el-table-column prop="student_no" label="学号" width="150" />
+        <el-table-column prop="name" label="姓名" width="120" />
+        <el-table-column prop="major" label="专业" min-width="180" />
+        <el-table-column label="成绩" width="180">
+          <template #default="scope">
+            <el-input-number v-model="scope.row.score" :min="0" :max="100" :precision="1" size="small" controls-position="right" />
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="100">
+          <template #default="scope">
+            <el-button type="primary" size="small" @click="handleSaveScore(scope.row)">保存</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </template>
   </div>
 </template>
 
@@ -51,15 +51,13 @@ const courseList = ref([])
 const studentList = ref([])
 const selectedCourse = ref('')
 
-const user = computed(() => {
-  return JSON.parse(localStorage.getItem('user') || '{}')
-})
+const user = computed(() => JSON.parse(localStorage.getItem('user') || '{}'))
 
 const loadCourses = async () => {
   try {
     const result = await getCourseList()
     if (result.success) {
-      courseList.value = result.data.filter(course => course.teacher_name === user.value.name)
+      courseList.value = result.data.filter(c => c.teacher_name === user.value.name)
     }
   } catch (error) {
     ElMessage.error('加载课程列表失败')
@@ -67,7 +65,7 @@ const loadCourses = async () => {
 }
 
 const loadStudents = async () => {
-  if (!selectedCourse.value) return
+  if (!selectedCourse.value) { studentList.value = []; return }
   try {
     const result = await getStudentList(selectedCourse.value)
     if (result.success) {
@@ -79,7 +77,7 @@ const loadStudents = async () => {
 }
 
 const handleSaveScore = async (student) => {
-  if (student.score === null) {
+  if (student.score === null || student.score === undefined) {
     ElMessage.warning('请输入成绩')
     return
   }
@@ -99,20 +97,12 @@ const handleSaveScore = async (student) => {
   }
 }
 
-onMounted(() => {
-  loadCourses()
-})
+onMounted(() => { loadCourses() })
 </script>
 
 <style scoped>
-.page-container {
-  padding: 20px;
-  background: white;
-  border-radius: 8px;
+.filter-bar {
+  margin-bottom: var(--space-lg);
 }
-
-.page-container h2 {
-  margin: 0 0 20px 0;
-  color: #333;
-}
+.filter-bar .el-select { width: 280px; }
 </style>

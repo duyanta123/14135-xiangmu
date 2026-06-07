@@ -1,5 +1,6 @@
 package com.labcourse.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -22,6 +23,7 @@ public class Student {
     @Column(name = "major", length = 100)
     private String major;
     
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @Column(name = "password", nullable = false, length = 100)
     private String password;
     

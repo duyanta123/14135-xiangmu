@@ -3,6 +3,8 @@ package com.labcourse.controller;
 import com.labcourse.service.SelectionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -10,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/selection")
+@RequestMapping("/api/selection")
 public class SelectionController {
 
     @Autowired
@@ -18,14 +20,22 @@ public class SelectionController {
 
     @PostMapping("/add")
     public ResponseEntity<Map<String, Object>> add(@RequestBody Map<String, Long> data) {
-        Long studentId = data.get("studentId");
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long currentUserId = (Long) authentication.getPrincipal();
         Long courseId = data.get("courseId");
 
+        if (courseId == null) {
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", false);
+            result.put("message", "课程ID不能为空");
+            return ResponseEntity.badRequest().body(result);
+        }
+
         Map<String, Object> result = new HashMap<>();
-        boolean success = selectionService.addSelection(studentId, courseId);
+        boolean success = selectionService.addSelection(currentUserId, courseId);
 
         result.put("success", success);
-        result.put("message", success ? "选课成功" : "选课失败（已选或人数已满）");
+        result.put("message", success ? "选课成功" : "选课失败，请检查课程是否存在、是否已满或是否已选过");
         return ResponseEntity.ok(result);
     }
 
@@ -38,10 +48,13 @@ public class SelectionController {
         return ResponseEntity.ok(result);
     }
 
-    @GetMapping("/my/{studentId}")
-    public ResponseEntity<Map<String, Object>> myCourses(@PathVariable Long studentId) {
+    @GetMapping("/my")
+    public ResponseEntity<Map<String, Object>> myCourses() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long currentUserId = (Long) authentication.getPrincipal();
+        
         Map<String, Object> result = new HashMap<>();
-        List<Map<String, Object>> courses = selectionService.getMyCourses(studentId);
+        List<Map<String, Object>> courses = selectionService.getMyCourses(currentUserId);
         result.put("success", true);
         result.put("data", courses);
         return ResponseEntity.ok(result);

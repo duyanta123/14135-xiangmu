@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/score")
+@RequestMapping("/api/score")
 public class ScoreController {
 
     @Autowired

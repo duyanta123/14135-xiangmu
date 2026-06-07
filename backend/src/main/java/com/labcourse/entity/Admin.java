@@ -1,5 +1,7 @@
 package com.labcourse.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -13,6 +15,7 @@ public class Admin {
     @Column(name = "username", unique = true, nullable = false, length = 50)
     private String username;
     
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @Column(name = "password", nullable = false, length = 100)
     private String password;
     

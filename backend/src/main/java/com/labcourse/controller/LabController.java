@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/lab")
+@RequestMapping("/api/lab")
 public class LabController {
 
     @Autowired

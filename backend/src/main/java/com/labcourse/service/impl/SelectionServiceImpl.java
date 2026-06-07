@@ -5,6 +5,8 @@ import com.labcourse.entity.Selection;
 import com.labcourse.repository.CourseRepository;
 import com.labcourse.repository.SelectionRepository;
 import com.labcourse.service.SelectionService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -14,7 +16,10 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@SuppressWarnings("null")
 public class SelectionServiceImpl implements SelectionService {
+
+    private static final Logger logger = LoggerFactory.getLogger(SelectionServiceImpl.class);
 
     @Autowired
     private SelectionRepository selectionRepository;
@@ -30,13 +35,20 @@ public class SelectionServiceImpl implements SelectionService {
     public boolean addSelection(Long studentId, Long courseId) {
         try {
             if (selectionRepository.findByStudentIdAndCourseId(studentId, courseId).isPresent()) {
+                logger.warn("选课失败：学生 {} 已选择课程 {}", studentId, courseId);
                 return false;
             }
 
             Long count = selectionRepository.countByCourseId(courseId);
             Course course = courseRepository.findById(courseId).orElse(null);
             
-            if (course != null && count >= course.getMaxCount()) {
+            if (course == null) {
+                logger.warn("选课失败：课程 {} 不存在", courseId);
+                return false;
+            }
+            
+            if (count >= course.getMaxCount()) {
+                logger.warn("选课失败：课程 {} 人数已满 (已选 {} / 上限 {})", courseId, count, course.getMaxCount());
                 return false;
             }
 
@@ -44,9 +56,10 @@ public class SelectionServiceImpl implements SelectionService {
             selection.setStudentId(studentId);
             selection.setCourseId(courseId);
             selectionRepository.save(selection);
+            logger.info("选课成功：学生 {} 选择了课程 {} ({})", studentId, courseId, course.getCourseName());
             return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("选课异常：学生 {} 课程 {} - {}", studentId, courseId, e.getMessage(), e);
             return false;
         }
     }
