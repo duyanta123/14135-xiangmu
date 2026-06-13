@@ -27,6 +27,10 @@ public class Student {
     @Column(name = "password", nullable = false, length = 100)
     private String password;
     
+    // Security fix (HIGH-001): Refresh Token 用于Token轮转
+    @Column(name = "refresh_token", length = 512)
+    private String refreshToken;
+    
     @Column(name = "created_at")
     private LocalDateTime createdAt;
     
@@ -52,6 +56,9 @@ public class Student {
 
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
+
+    public String getRefreshToken() { return refreshToken; }
+    public void setRefreshToken(String refreshToken) { this.refreshToken = refreshToken; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

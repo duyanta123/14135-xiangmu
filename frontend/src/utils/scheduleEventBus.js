@@ -46,5 +46,12 @@ export function onScheduleUpdate(callback) {
     ch.addEventListener('message', handler)
     return () => ch.removeEventListener('message', handler)
   }
-  return () => {}
+  // BroadcastChannel 不可用时，降级为 localStorage storage 事件监听
+  const storageHandler = (event) => {
+    if (event.key === 'schedule_bust') {
+      callback()
+    }
+  }
+  window.addEventListener('storage', storageHandler)
+  return () => window.removeEventListener('storage', storageHandler)
 }

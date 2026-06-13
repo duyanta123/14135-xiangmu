@@ -19,8 +19,9 @@ public class Attendance {
     @Column(name = "course_id", nullable = false)
     private Long courseId;
 
-    @Column(name = "attendance_status", length = 20)
-    private String attendanceStatus;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "attendance_status", columnDefinition = "ENUM('出勤','请假','缺勤','迟到')")
+    private AttendanceStatus attendanceStatus;
 
     @Column(name = "attendance_date")
     private LocalDate attendanceDate;
@@ -51,8 +52,8 @@ public class Attendance {
     public Long getCourseId() { return courseId; }
     public void setCourseId(Long courseId) { this.courseId = courseId; }
 
-    public String getAttendanceStatus() { return attendanceStatus; }
-    public void setAttendanceStatus(String attendanceStatus) { this.attendanceStatus = attendanceStatus; }
+    public AttendanceStatus getAttendanceStatus() { return attendanceStatus; }
+    public void setAttendanceStatus(AttendanceStatus attendanceStatus) { this.attendanceStatus = attendanceStatus; }
 
     public LocalDate getAttendanceDate() { return attendanceDate; }
     public void setAttendanceDate(LocalDate attendanceDate) { this.attendanceDate = attendanceDate; }

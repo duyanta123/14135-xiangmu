@@ -5,8 +5,12 @@ import tokenManager from './tokenManager'
 
 const request = axios.create({
   baseURL: '/api',
-  timeout: 10000
+  timeout: 10000,
+  withCredentials: true, // BFF 模式：携带 Cookie
 })
+
+// BFF 模式标记
+const BFF_ENABLED = import.meta.env.VITE_BFF_ENABLED !== 'false'
 
 let isRefreshing = false
 let requestQueue = []
@@ -24,8 +28,15 @@ const processQueue = (error, token = null) => {
 
 request.interceptors.request.use(
   async config => {
+    if (BFF_ENABLED) {
+      // BFF 模式：Cookie 自动携带，无需手动管理 Token
+      tokenManager.refreshTokenIfNeeded()
+      return config
+    }
+
+    // 降级模式：保持原有 Token 管理逻辑
     let token = tokenManager.getToken()
-    
+
     if (token && tokenManager.isTokenAboutToExpire()) {
       if (!isRefreshing) {
         isRefreshing = true
@@ -60,7 +71,7 @@ request.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
-    
+
     return config
   },
   error => {

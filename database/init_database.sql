@@ -105,11 +105,16 @@ CREATE TABLE attendance (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     student_id BIGINT NOT NULL COMMENT '学生ID',
     course_id BIGINT NOT NULL COMMENT '课程ID',
-    attendance_status VARCHAR(20) COMMENT '出勤状态',
+    attendance_status ENUM('出勤','请假','缺勤','迟到') COMMENT '出勤状态',
+    attendance_date DATE COMMENT '考勤日期',
+    modified_by BIGINT COMMENT '修改人ID',
+    modify_time DATETIME COMMENT '修改时间',
+    modify_reason VARCHAR(200) COMMENT '修改原因',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (student_id) REFERENCES student(id),
-    FOREIGN KEY (course_id) REFERENCES course(id)
+    FOREIGN KEY (course_id) REFERENCES course(id),
+    UNIQUE KEY uk_student_course_date (student_id, course_id, attendance_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='考勤表';
 
 -- 创建索引
@@ -122,25 +127,26 @@ CREATE INDEX idx_score_course ON score(course_id);
 CREATE INDEX idx_attendance_student ON attendance(student_id);
 CREATE INDEX idx_attendance_course ON attendance(course_id);
 
--- 插入初始数据
+-- 初始数据（密码均已使用BCrypt哈希，原文: 123456）
+-- 首次运行时 PasswordMigration 会自动将明文密码升级为BCrypt
 
 -- 管理员数据
 INSERT INTO admin (username, password) VALUES
-('admin', '123456');
+('admin', '$2a$10$xho2DUDIw9hwjxC2e7NPvej93757fkeQJHEGTior0Wt.ViGBRphNq');
 
 -- 教师数据
 INSERT INTO teacher (teacher_no, name, title, password) VALUES
-('T001', '张三', '教授', '123456'),
-('T002', '李四', '副教授', '123456'),
-('T003', '王五', '讲师', '123456');
+('T001', '张三', '教授', '$2a$10$xho2DUDIw9hwjxC2e7NPvej93757fkeQJHEGTior0Wt.ViGBRphNq'),
+('T002', '李四', '副教授', '$2a$10$xho2DUDIw9hwjxC2e7NPvej93757fkeQJHEGTior0Wt.ViGBRphNq'),
+('T003', '王五', '讲师', '$2a$10$xho2DUDIw9hwjxC2e7NPvej93757fkeQJHEGTior0Wt.ViGBRphNq');
 
 -- 学生数据
 INSERT INTO student (student_no, name, gender, major, password) VALUES
-('S001', '王小明', '男', '计算机科学与技术', '123456'),
-('S002', '李小红', '女', '软件工程', '123456'),
-('S003', '张小强', '男', '网络工程', '123456'),
-('S004', '刘小芳', '女', '信息安全', '123456'),
-('S005', '陈小刚', '男', '物联网工程', '123456');
+('S001', '王小明', '男', '计算机科学与技术', '$2a$10$xho2DUDIw9hwjxC2e7NPvej93757fkeQJHEGTior0Wt.ViGBRphNq'),
+('S002', '李小红', '女', '软件工程', '$2a$10$xho2DUDIw9hwjxC2e7NPvej93757fkeQJHEGTior0Wt.ViGBRphNq'),
+('S003', '张小强', '男', '网络工程', '$2a$10$xho2DUDIw9hwjxC2e7NPvej93757fkeQJHEGTior0Wt.ViGBRphNq'),
+('S004', '刘小芳', '女', '信息安全', '$2a$10$xho2DUDIw9hwjxC2e7NPvej93757fkeQJHEGTior0Wt.ViGBRphNq'),
+('S005', '陈小刚', '男', '物联网工程', '$2a$10$xho2DUDIw9hwjxC2e7NPvej93757fkeQJHEGTior0Wt.ViGBRphNq');
 
 -- 实验室数据
 INSERT INTO lab (lab_name, location, capacity) VALUES

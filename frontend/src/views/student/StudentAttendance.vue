@@ -152,7 +152,7 @@ import { ElMessage } from 'element-plus'
 import { getMyCourses } from '../../api/selection'
 import { checkIn, getServerTime, getAttendanceHistory } from '../../api/attendance'
 import { getCourseList } from '../../api/course'
-import { enqueueCheckIn, getQueue, removeFromQueue, getQueueSize } from '../../utils/offlineCheckin'
+import { enqueueCheckIn, getQueue, removeFromQueue, getQueueSize, clearQueue } from '../../utils/offlineCheckin'
 
 const loading = ref(false)
 const courseList = ref([])
@@ -248,9 +248,9 @@ async function loadCourses() {
       })
 
       courseList.value = courses.map(course => {
-        const record = todayRecords.find(r => r.courseId === course.id)
+        const record = todayRecords.find(r => r.courseId === course.course_id)
         return {
-          courseId: course.id,
+          courseId: course.course_id,
           courseName: course.course_name,
           teacherName: course.teacher_name,
           courseTime: course.course_time,
@@ -298,23 +298,37 @@ async function handleCheckIn(course) {
 }
 
 async function syncOffline() {
-  const queue = getQueue()
+  let queue = getQueue()
+  // 过滤掉无效数据（修复前遗留的 undefined courseId 等）
+  const validItems = queue.filter(item => item.studentId != null && item.courseId != null)
+  if (validItems.length < queue.length) {
+    // 清理无效条目，只保留有效数据
+    clearQueue()
+    validItems.forEach(item => enqueueCheckIn(item.studentId, item.courseId))
+  }
+  queue = getQueue()
   if (queue.length === 0) return
 
   let synced = 0
-  for (const item of queue) {
+  let failed = 0
+  for (const item of [...queue]) {
     try {
       await checkIn({ studentId: item.studentId, courseId: item.courseId })
       removeFromQueue(item.studentId, item.courseId)
       synced++
     } catch {
-      break
+      // 同步失败（如参数无效或业务拒绝），移除该条目避免反复重试
+      removeFromQueue(item.studentId, item.courseId)
+      failed++
     }
   }
   offlineCount.value = getQueueSize()
   if (synced > 0) {
     ElMessage.success(`已同步 ${synced} 条签到记录`)
     await loadCourses()
+  }
+  if (failed > 0) {
+    ElMessage.warning(`${failed} 条签到记录同步失败，已从队列移除`)
   }
 }
 

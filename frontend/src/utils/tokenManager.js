@@ -1,6 +1,12 @@
-import axios from 'axios'
+/**
+ * 简化版 TokenManager
+ * BFF 模式下 Token 由 HttpOnly Cookie 管理，前端不持有 Token
+ * 降级模式（VITE_BFF_ENABLED=false）下保持原有逻辑
+ */
 
-const TOKEN_REFRESH_THRESHOLD = 10 * 60 // 10分钟（秒）
+const BFF_ENABLED = import.meta.env.VITE_BFF_ENABLED !== 'false'
+
+const TOKEN_REFRESH_THRESHOLD = 10 * 60 // 10 分钟（秒）
 
 class TokenManager {
   constructor() {
@@ -8,6 +14,7 @@ class TokenManager {
   }
 
   getToken() {
+    if (BFF_ENABLED) return null // Cookie 自动携带
     const user = JSON.parse(localStorage.getItem('user') || '{}')
     return user.token || null
   }
@@ -18,19 +25,30 @@ class TokenManager {
   }
 
   setToken(token, expiresIn) {
+    if (BFF_ENABLED) return // Cookie 由 BFF 管理
     const user = JSON.parse(localStorage.getItem('user') || '{}')
     user.token = token
     user.tokenExpireTime = Date.now() + expiresIn * 1000
     localStorage.setItem('user', JSON.stringify(user))
   }
 
+  setUser(userInfo) {
+    localStorage.setItem('user', JSON.stringify(userInfo))
+  }
+
+  getUser() {
+    return JSON.parse(localStorage.getItem('user') || '{}')
+  }
+
   isTokenExpired() {
+    if (BFF_ENABLED) return false
     const expireTime = this.getTokenExpireTime()
     if (!expireTime) return true
     return Date.now() >= expireTime
   }
 
   isTokenAboutToExpire() {
+    if (BFF_ENABLED) return false // BFF 端自动刷新
     const expireTime = this.getTokenExpireTime()
     if (!expireTime) return true
     const remainingTime = (expireTime - Date.now()) / 1000
@@ -38,6 +56,19 @@ class TokenManager {
   }
 
   async refreshTokenIfNeeded() {
+    if (BFF_ENABLED) {
+      try {
+        await fetch('/api/auth/refresh', {
+          method: 'POST',
+          credentials: 'include',
+        })
+      } catch (err) {
+        console.warn('[TokenManager] BFF Token 刷新失败:', err.message)
+        // 静默失败，下次请求会触发 401
+      }
+      return null
+    }
+
     if (!this.isTokenAboutToExpire()) {
       return this.getToken()
     }
@@ -48,7 +79,7 @@ class TokenManager {
     }
 
     this.refreshPromise = this.doRefreshToken()
-    
+
     try {
       await this.refreshPromise
       return this.getToken()
@@ -64,6 +95,7 @@ class TokenManager {
         throw new Error('No token available')
       }
 
+      const axios = (await import('axios')).default
       const response = await axios.post('/api/auth/refresh', {}, {
         headers: {
           Authorization: `Bearer ${currentToken}`

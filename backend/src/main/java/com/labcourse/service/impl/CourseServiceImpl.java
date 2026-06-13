@@ -72,7 +72,10 @@ public class CourseServiceImpl implements CourseService {
             return false;
         }
 
-        // 先删除关联数据，避免外键约束冲突
+        // 注意：以下关联表需要手动清理（JPA 未配置级联删除）：
+        // - selection (选课表)
+        // - score (成绩表)
+        // - attendance (考勤表)
         int deletedSelections = jdbcTemplate.update("DELETE FROM selection WHERE course_id = ?", id);
         int deletedScores = jdbcTemplate.update("DELETE FROM score WHERE course_id = ?", id);
         int deletedAttendances = jdbcTemplate.update("DELETE FROM attendance WHERE course_id = ?", id);

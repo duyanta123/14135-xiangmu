@@ -1,0 +1,70 @@
+# ============================================================
+# 生产环境配置文件 (application-prod.yml)
+# 激活方式: --spring.profiles.active=prod
+# ============================================================
+
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/lab_course_system?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=true&requireSSL=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+      max-lifetime: 1200000
+
+  jpa:
+    open-in-view: false
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: false
+
+server:
+  port: ${SERVER_PORT:8080}
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+  tomcat:
+    max-connections: 200
+    threads:
+      max: 50
+      min-spare: 10
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:86400000}
+
+# ============================================================
+# 生产环境日志配置
+# - ROOT=WARN: 抑制第三方框架噪音
+# - AttendanceServiceImpl=DEBUG: 签到核心模块完整调试日志
+# - GlobalExceptionHandler=DEBUG: 异常捕获可见
+# - JwtFilter=INFO: 认证环节日志
+# - 文件输出: logs/lab-course-system.log, 10MB滚动, 保留30天
+# ============================================================
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: ${LOG_FILE:logs/lab-course-system.log}
+    max-size: 10MB
+    max-history: 30
+  level:
+    root: WARN
+    com.labcourse: INFO
+    com.labcourse.service.impl.AttendanceServiceImpl: DEBUG
+    com.labcourse.controller.AttendanceController: DEBUG
+    com.labcourse.filter.JwtFilter: INFO
+    com.labcourse.config.GlobalExceptionHandler: DEBUG
+    org.springframework.security: WARN
+    org.springframework.web: WARN
+    org.springframework.orm.jpa: WARN
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql: WARN

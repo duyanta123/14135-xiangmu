@@ -78,9 +78,15 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const sidebarOpen = ref(false)
-const user = computed(() => JSON.parse(localStorage.getItem('user') || '{}'))
+const user = computed(() => {
+  try { return JSON.parse(localStorage.getItem('user') || '{}') } catch { return {} }
+})
 
-const handleLogout = () => {
+const handleLogout = async () => {
+  const BFF_ENABLED = import.meta.env.VITE_BFF_ENABLED !== 'false'
+  if (BFF_ENABLED) {
+    try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }) } catch { /* 静默 */ }
+  }
   localStorage.removeItem('user')
   router.push('/login')
 }

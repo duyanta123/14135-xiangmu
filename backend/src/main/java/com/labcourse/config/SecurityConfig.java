@@ -36,14 +36,16 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // 登录接口允许匿名访问
                         .requestMatchers("/api/student/login", "/api/teacher/login", "/api/admin/login").permitAll()
                         .requestMatchers("/api/course/list", "/api/course/list/simple").permitAll()
-                        // Token刷新接口需要认证（但不需要重新登录）
-                        .requestMatchers("/api/auth/refresh", "/api/auth/validate").authenticated()
+                        // Token刷新/登出接口：permitAll，由Controller内部自行验证refreshToken
+                        .requestMatchers("/api/auth/refresh", "/api/auth/logout").permitAll()
                         // 管理员可管理学生（增删改查）
                         .requestMatchers("/api/student/add", "/api/student/update", "/api/student/delete/**", "/api/student/list").hasRole("admin")
                         // 管理员可管理教师（增删改查）
@@ -71,9 +73,9 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:4000"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

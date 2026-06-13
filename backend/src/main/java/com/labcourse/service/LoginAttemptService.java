@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 public class LoginAttemptService {
@@ -63,17 +64,17 @@ public class LoginAttemptService {
     }
 
     private static class LoginAttempt {
-        private int attempts;
-        private LocalDateTime firstAttemptTime;
-        private LocalDateTime lockUntil;
+        private final AtomicInteger attempts = new AtomicInteger(0);
+        private volatile LocalDateTime firstAttemptTime;
+        private volatile LocalDateTime lockUntil;
 
         void recordFailure() {
             LocalDateTime now = LocalDateTime.now();
             if (firstAttemptTime == null || isWindowExpired()) {
-                attempts = 0;
+                attempts.set(0);
                 firstAttemptTime = now;
             }
-            attempts++;
+            attempts.incrementAndGet();
         }
 
         void lock(int durationMinutes) {
@@ -96,7 +97,7 @@ public class LoginAttemptService {
         }
 
         int getAttempts() {
-            return attempts;
+            return attempts.get();
         }
     }
 

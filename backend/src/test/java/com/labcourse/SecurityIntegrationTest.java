@@ -37,7 +37,8 @@ class SecurityIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    private String testToken;
+    private String testAccessToken;
+    private String testRefreshToken;
 
     @BeforeEach
     void setUp() {
@@ -64,7 +65,8 @@ class SecurityIntegrationTest {
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.token").exists())
+                .andExpect(jsonPath("$.accessToken").exists())
+                .andExpect(jsonPath("$.refreshToken").exists())
                 .andExpect(jsonPath("$.data.password").doesNotExist()) // 密码不应返回
                 .andReturn()
                 .getResponse()
@@ -72,9 +74,11 @@ class SecurityIntegrationTest {
 
         // 保存Token用于后续测试
         Map<String, Object> result = objectMapper.readValue(response, Map.class);
-        testToken = (String) result.get("token");
-        assertNotNull(testToken);
-        System.out.println("Login success, token: " + testToken.substring(0, 50) + "...");
+        testAccessToken = (String) result.get("accessToken");
+        testRefreshToken = (String) result.get("refreshToken");
+        assertNotNull(testAccessToken);
+        assertNotNull(testRefreshToken);
+        System.out.println("Login success, accessToken: " + testAccessToken.substring(0, 50) + "...");
     }
 
     @Test
@@ -147,7 +151,8 @@ class SecurityIntegrationTest {
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.token").exists())
+                .andExpect(jsonPath("$.accessToken").exists())
+                .andExpect(jsonPath("$.refreshToken").exists())
                 .andExpect(jsonPath("$.data.password").doesNotExist());
     }
 
@@ -162,7 +167,93 @@ class SecurityIntegrationTest {
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.token").exists())
+                .andExpect(jsonPath("$.accessToken").exists())
+                .andExpect(jsonPath("$.refreshToken").exists())
                 .andExpect(jsonPath("$.data.password").doesNotExist());
+    }
+
+    // ========== HIGH-001: Token 轮转安全测试 ==========
+
+    @Test
+    void testTokenRotationFullFlow() throws Exception {
+        // Step 1: 登录获取 accessToken 和 refreshToken
+        Map<String, String> loginRequest = new HashMap<>();
+        loginRequest.put("studentNo", "S001");
+        loginRequest.put("password", "123456");
+
+        String loginResponse = mockMvc.perform(post("/api/student/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.accessToken").exists())
+                .andExpect(jsonPath("$.refreshToken").exists())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        Map<String, Object> loginResult = objectMapper.readValue(loginResponse, Map.class);
+        String accessToken = (String) loginResult.get("accessToken");
+        String refreshToken = (String) loginResult.get("refreshToken");
+        assertNotNull(accessToken, "accessToken不应为空");
+        assertNotNull(refreshToken, "refreshToken不应为空");
+
+        // Step 2: 使用 refreshToken 刷新获取新令牌
+        Map<String, String> refreshRequest = new HashMap<>();
+        refreshRequest.put("refreshToken", refreshToken);
+
+        String refreshResponse = mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(refreshRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.accessToken").exists())
+                .andExpect(jsonPath("$.refreshToken").exists())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        Map<String, Object> refreshResult = objectMapper.readValue(refreshResponse, Map.class);
+        String newAccessToken = (String) refreshResult.get("accessToken");
+        String newRefreshToken = (String) refreshResult.get("refreshToken");
+        assertNotNull(newAccessToken, "新accessToken不应为空");
+        assertNotNull(newRefreshToken, "新refreshToken不应为空");
+        assertNotEquals(refreshToken, newRefreshToken, "刷新后refreshToken应轮转");
+
+        // Step 3: 旧 refreshToken 已被轮转，再次使用应被拒绝
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(refreshRequest))) // 使用旧的refreshToken
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    void testRefreshWithAccessTokenFails() throws Exception {
+        // 先登录
+        Map<String, String> loginRequest = new HashMap<>();
+        loginRequest.put("studentNo", "S001");
+        loginRequest.put("password", "123456");
+
+        String loginResponse = mockMvc.perform(post("/api/student/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        Map<String, Object> loginResult = objectMapper.readValue(loginResponse, Map.class);
+        String accessToken = (String) loginResult.get("accessToken");
+
+        // 尝试用 accessToken 去刷新（应该被拒绝，只能用 refreshToken）
+        Map<String, String> badRefreshRequest = new HashMap<>();
+        badRefreshRequest.put("refreshToken", accessToken);
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(badRefreshRequest)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false));
     }
 }

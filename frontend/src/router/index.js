@@ -133,6 +133,8 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const isLoggedIn = user && user.token
+  // Security fix (HIGH-003): BFF模式下不存储角色信息，信任后端API授权
+  const isBffMode = user._bffMode === true
 
   // 检查路由是否需要特定角色
   const requiresRole = to.path.startsWith('/student') || to.path.startsWith('/teacher') || to.path.startsWith('/admin')
@@ -140,7 +142,12 @@ router.beforeEach((to, from, next) => {
   if (to.path === '/login') {
     // 如果已登录，跳转到对应首页
     if (isLoggedIn) {
-      next(`/${user.role}`)
+      if (isBffMode) {
+        // BFF模式下无角色信息，跳转到通用首页
+        next('/student')
+      } else {
+        next(`/${user.role}`)
+      }
     } else {
       next()
     }
@@ -148,6 +155,9 @@ router.beforeEach((to, from, next) => {
     // 检查是否登录
     if (!isLoggedIn) {
       next('/login')
+    } else if (isBffMode) {
+      // BFF模式下信任后端API授权，前端路由不做角色校验
+      next()
     } else {
       // 检查角色是否匹配
       const isStudentRoute = to.path.startsWith('/student') && user.role === 'student'

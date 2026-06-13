@@ -1,6 +1,7 @@
 package com.labcourse.controller;
 
 import com.labcourse.entity.Student;
+import com.labcourse.repository.StudentRepository;
 import com.labcourse.service.StudentService;
 import com.labcourse.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,9 @@ public class StudentController {
     private StudentService studentService;
 
     @Autowired
+    private StudentRepository studentRepository;
+
+    @Autowired
     private JwtUtil jwtUtil;
 
     @PostMapping("/login")
@@ -28,11 +32,17 @@ public class StudentController {
         Student student = studentService.login(studentNo, password);
         Map<String, Object> result = new HashMap<>();
         if (student != null) {
-            String token = jwtUtil.generateToken(student.getId(), student.getStudentNo(), "student");
+            // Security fix (HIGH-001): 生成双Token — Access Token + Refresh Token
+            String accessToken = jwtUtil.generateAccessToken(student.getId(), student.getStudentNo(), "student");
+            String refreshToken = jwtUtil.generateRefreshToken(student.getId());
+            // 保存 Refresh Token 到数据库
+            student.setRefreshToken(refreshToken);
+            studentRepository.save(student);
             result.put("success", true);
             result.put("message", "登录成功");
             result.put("data", student);
-            result.put("token", token);
+            result.put("accessToken", accessToken);
+            result.put("refreshToken", refreshToken);
             return ResponseEntity.ok(result);
         } else {
             result.put("success", false);

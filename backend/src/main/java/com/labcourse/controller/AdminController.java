@@ -1,6 +1,7 @@
 package com.labcourse.controller;
 
 import com.labcourse.entity.Admin;
+import com.labcourse.repository.AdminRepository;
 import com.labcourse.service.AdminService;
 import com.labcourse.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,9 @@ public class AdminController {
     private AdminService adminService;
 
     @Autowired
+    private AdminRepository adminRepository;
+
+    @Autowired
     private JwtUtil jwtUtil;
 
     @PostMapping("/login")
@@ -29,11 +33,16 @@ public class AdminController {
         Map<String, Object> result = new HashMap<>();
 
         if (admin != null) {
-            String token = jwtUtil.generateToken(admin.getId(), admin.getUsername(), "admin");
+            // Security fix (HIGH-001): 生成双Token
+            String accessToken = jwtUtil.generateAccessToken(admin.getId(), admin.getUsername(), "admin");
+            String refreshToken = jwtUtil.generateRefreshToken(admin.getId());
+            admin.setRefreshToken(refreshToken);
+            adminRepository.save(admin);
             result.put("success", true);
             result.put("message", "登录成功");
             result.put("data", admin);
-            result.put("token", token);
+            result.put("accessToken", accessToken);
+            result.put("refreshToken", refreshToken);
             return ResponseEntity.ok(result);
         } else {
             result.put("success", false);

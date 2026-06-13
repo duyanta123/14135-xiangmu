@@ -63,7 +63,7 @@
       </el-form>
 
       <div class="card-footer">
-        <details class="test-accounts">
+        <details v-if="isDev" class="test-accounts">
           <summary>测试账号</summary>
           <div class="accounts-grid">
             <div class="account-item">
@@ -119,6 +119,9 @@ const accountPlaceholder = computed(() => {
   return map[loginForm.role] || '请输入账号'
 })
 
+// Security fix: 测试账号仅在开发环境可见 (HIGH-008)
+const isDev = import.meta.env.DEV
+
 const handleLogin = async () => {
   if (!loginForm.account || !loginForm.password) {
     ElMessage.warning('请输入账号和密码')
@@ -137,12 +140,17 @@ const handleLogin = async () => {
     }
 
     if (result.success) {
-      const userData = {
-        ...result.data,
-        role: loginForm.role,
-        token: result.token,
-        tokenExpireTime: Date.now() + 86400 * 1000
-      }
+      const BFF_ENABLED = import.meta.env.VITE_BFF_ENABLED !== 'false'
+      // Security fix (HIGH-003): BFF模式下不存储身份信息到localStorage
+      // Token由HttpOnly Cookie管理，身份信息通过API获取
+      const userData = BFF_ENABLED
+        ? { _bffMode: true, token: 'bff-cookie' }
+        : {
+            ...result.data,
+            role: loginForm.role,
+            token: result.token,
+            tokenExpireTime: result.data?.tokenExpireTime || (Date.now() + 86400 * 1000),
+          }
       localStorage.setItem('user', JSON.stringify(userData))
       ElMessage.success(`欢迎，${result.data.name || result.data.username}`)
       router.push(`/${loginForm.role}`)

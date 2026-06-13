@@ -5,6 +5,7 @@ import com.labcourse.repository.ScoreRepository;
 import com.labcourse.service.ScoreService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -17,6 +18,7 @@ public class ScoreServiceImpl implements ScoreService {
     private ScoreRepository scoreRepository;
 
     @Override
+    @Transactional
     public boolean addScore(Long studentId, Long courseId, BigDecimal score) {
         Score existingScore = scoreRepository.findByStudentIdAndCourseId(studentId, courseId).orElse(null);
 

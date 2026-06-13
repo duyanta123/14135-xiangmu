@@ -13,7 +13,7 @@ public class Lab {
     @Column(name = "lab_name", nullable = false, length = 100)
     private String labName;
     
-    @Column(name = "location", length = 100)
+    @Column(name = "location", length = 200)
     private String location;
     
     @Column(name = "capacity")
