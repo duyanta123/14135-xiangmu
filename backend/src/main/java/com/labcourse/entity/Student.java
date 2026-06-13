@@ -28,6 +28,7 @@ public class Student {
     private String password;
     
     // Security fix (HIGH-001): Refresh Token 用于Token轮转
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @Column(name = "refresh_token", length = 512)
     private String refreshToken;
     
