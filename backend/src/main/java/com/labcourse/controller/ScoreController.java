@@ -1,8 +1,12 @@
 package com.labcourse.controller;
 
+import com.labcourse.entity.Course;
+import com.labcourse.repository.CourseRepository;
 import com.labcourse.service.ScoreService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -15,6 +19,9 @@ public class ScoreController {
 
     @Autowired
     private ScoreService scoreService;
+
+    @Autowired
+    private CourseRepository courseRepository;
 
     @PostMapping("/add")
     public ResponseEntity<Map<String, Object>> add(@RequestBody Map<String, Object> data) {
@@ -47,6 +54,16 @@ public class ScoreController {
             result.put("success", false);
             result.put("message", "无效的ID参数");
             return ResponseEntity.badRequest().body(result);
+        }
+
+        // Security fix (MEDIUM): 验证当前教师是否是该课程的授课教师
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long currentTeacherId = Long.valueOf(authentication.getPrincipal().toString());
+        Course course = courseRepository.findById(courseId).orElse(null);
+        if (course == null || !course.getTeacherId().equals(currentTeacherId)) {
+            result.put("success", false);
+            result.put("message", "无权为此课程的学生录入成绩");
+            return ResponseEntity.status(403).body(result);
         }
 
         boolean success = scoreService.addScore(studentId, courseId, score);

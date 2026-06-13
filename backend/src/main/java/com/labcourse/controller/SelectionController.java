@@ -41,10 +41,14 @@ public class SelectionController {
 
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<Map<String, Object>> delete(@PathVariable Long id) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long currentUserId = (Long) authentication.getPrincipal();
+
         Map<String, Object> result = new HashMap<>();
-        boolean success = selectionService.deleteSelection(id);
+        // Security fix (MEDIUM): 传入当前用户ID进行所有权校验，防止IDOR
+        boolean success = selectionService.deleteSelection(id, currentUserId);
         result.put("success", success);
-        result.put("message", success ? "退课成功" : "退课失败");
+        result.put("message", success ? "退课成功" : "退课失败，无权操作此选课记录");
         return ResponseEntity.ok(result);
     }
 

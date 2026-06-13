@@ -65,8 +65,15 @@ public class SelectionServiceImpl implements SelectionService {
     }
 
     @Override
-    public boolean deleteSelection(Long id) {
+    public boolean deleteSelection(Long id, Long currentUserId) {
+        // Security fix (MEDIUM): 验证选课记录所有权，防止IDOR攻击
+        com.labcourse.entity.Selection selection = selectionRepository.findById(id).orElse(null);
+        if (selection == null || !selection.getStudentId().equals(currentUserId)) {
+            logger.warn("退课失败：选课记录 {} 不属于学生 {} 或不存在", id, currentUserId);
+            return false;
+        }
         selectionRepository.deleteById(id);
+        logger.info("学生 {} 退课成功：选课记录 {}", currentUserId, id);
         return true;
     }
 
