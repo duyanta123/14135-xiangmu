@@ -14,8 +14,9 @@ const log = createLogger('JWT')
 export async function jwtVerify(request, reply) {
   const requestId = request.id
 
-  // 1. 从 Cookie 获取 Token
-  let token = request.cookies?.[config.jwt.cookieName]
+  // 1. 从 Cookie 获取 Token（优先双Token accessToken，兼容旧版 cookieName）
+  let token = request.cookies?.[config.jwt.accessTokenCookieName]
+    || request.cookies?.[config.jwt.cookieName]
   const tokenSource = token ? 'Cookie' : null
 
   // 2. Fallback：从 Authorization Header 获取（向前兼容）

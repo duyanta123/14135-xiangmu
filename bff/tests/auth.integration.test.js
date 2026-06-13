@@ -731,7 +731,62 @@ describe('POST /api/auth/refresh - Token 轮换验证', () => {
 })
 
 // ============================================================================
-// 14. Cookie 安全性详细验证
+// 14. Dual-Token 认证 — BFF-001 修复验证
+// 验证 jwtVerify 中间件能正确读取 bff_access_token Cookie（而非 bff_token）
+// Bug: jwtVerify.js 读取 config.jwt.cookieName('bff_token')，但双Token登录设置的是
+//       config.jwt.accessTokenCookieName('bff_access_token')
+// ============================================================================
+describe('Dual-Token 认证 — jwtVerify 读取 accessToken Cookie', () => {
+  it('应该接受 bff_access_token Cookie 中的有效 Token', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/selection/my',
+      cookies: { [config.jwt.accessTokenCookieName]: validToken },
+    })
+
+    // 不应返回 401（认证应通过）
+    // 后端不在运行时返回 502 是可以接受的，但 401 表示认证失败
+    expect(response.statusCode).not.toBe(401)
+  })
+
+  it('bff_access_token Cookie 中无效 Token 应返回 401', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/selection/my',
+      cookies: { [config.jwt.accessTokenCookieName]: invalidToken },
+    })
+
+    expect(response.statusCode).toBe(401)
+    const body = response.json()
+    expect(body.success).toBe(false)
+  })
+
+  it('bff_access_token Cookie 中过期 Token 应返回 401', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/selection/my',
+      cookies: { [config.jwt.accessTokenCookieName]: expiredToken },
+    })
+
+    expect(response.statusCode).toBe(401)
+    const body = response.json()
+    expect(body.success).toBe(false)
+  })
+
+  it('bff_access_token Cookie 缺失时应返回 401', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/selection/my',
+    })
+
+    expect(response.statusCode).toBe(401)
+    const body = response.json()
+    expect(body.success).toBe(false)
+  })
+})
+
+// ============================================================================
+// 15. Cookie 安全性详细验证
 // ============================================================================
 describe('Cookie 安全性验证', () => {
   it('刷新后的 Cookie 应包含 HttpOnly', async () => {

@@ -56,7 +56,7 @@ export async function transparentProxyPlugin(app) {
 
       // 如果 BFF 已验证过 Token，确保 Authorization 头正确传递
       if (request.user) {
-        forwardHeaders.authorization = `Bearer ${request.cookies?.[config.jwt.cookieName] || request.headers.authorization?.replace('Bearer ', '')}`
+        forwardHeaders.authorization = `Bearer ${request.cookies?.[config.jwt.accessTokenCookieName] || request.cookies?.[config.jwt.cookieName] || request.headers.authorization?.replace('Bearer ', '')}`
       }
 
       // 移除仅 BFF 内部使用的头
