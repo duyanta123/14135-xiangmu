@@ -144,14 +144,61 @@ export async function setupAuthRoutes(app) {
    * POST /api/auth/refresh
    * Token 刷新 — 读取 refreshToken Cookie，透传到后端进行轮转刷新
    * Security fix (HIGH-001): 代理刷新到后端实现Token轮转
+   *
+   * Token 读取优先级:
+   *   1. bff_refresh_token Cookie (双Token模式)
+   *   2. bff_token Cookie (兼容旧版单Token)
+   *   3. Authorization Header (兼容旧版)
    */
   app.post('/api/auth/refresh', async (request, reply) => {
+    const jwt = await import('jsonwebtoken')
+
     const refreshToken = request.cookies?.[config.jwt.refreshTokenCookieName]
+      || request.cookies?.[config.jwt.cookieName]
+      || (() => {
+        const authHeader = request.headers.authorization
+        if (authHeader?.startsWith('Bearer ')) {
+          return authHeader.slice(7)
+        }
+        return null
+      })()
 
     if (!refreshToken) {
-      log.warn('Token刷新请求：缺少RefreshToken Cookie', { requestId: request.id })
+      log.warn('Token刷新请求：缺少RefreshToken', { requestId: request.id })
       reply.code(401)
       return { success: false, message: '未找到RefreshToken，请重新登录' }
+    }
+
+    // 本地预验证 JWT 格式和过期
+    try {
+      const decoded = jwt.verify(refreshToken, config.jwt.secret, {
+        algorithms: ['HS256'],
+      })
+
+      log.info('Token刷新请求（本地验证通过）', {
+        requestId: request.id,
+        userId: decoded.userId || decoded.sub,
+        tokenExp: decoded.exp ? new Date(decoded.exp * 1000).toISOString() : 'unknown',
+      })
+    } catch (err) {
+      if (err.name === 'TokenExpiredError') {
+        log.warn('Token刷新失败：Token已过期', {
+          requestId: request.id,
+          expiredAt: err.expiredAt,
+        })
+        reply.clearCookie(config.jwt.refreshTokenCookieName, { path: '/api/auth' })
+        reply.clearCookie(config.jwt.cookieName, { path: '/' })
+        reply.code(401)
+        return { success: false, message: 'Token已过期，请重新登录' }
+      }
+
+      log.warn('Token刷新失败：Token无效', {
+        requestId: request.id,
+        error: err.name,
+        message: err.message,
+      })
+      reply.code(401)
+      return { success: false, message: 'Token无效，请重新登录' }
     }
 
     log.info('Token刷新请求', { requestId: request.id })
